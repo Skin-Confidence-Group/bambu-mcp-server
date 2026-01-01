@@ -1,0 +1,8 @@
+mcp>=1.1.0
+bambu-lab-cloud-api>=0.1.0
+fastapi>=0.115.0
+uvicorn[standard]>=0.32.0
+python-dotenv>=1.0.0
+pydantic[email]>=2.0.0
+pydantic-settings>=2.0.0
+email-validator>=2.0.0

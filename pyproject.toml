@@ -1,0 +1,29 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "bambu-mcp-server"
+version = "0.1.0"
+description = "MCP server for Bambu Lab 3D printers via Cloud API"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "mcp>=1.1.0",
+    "bambu-lab-cloud-api>=0.1.0",
+    "fastapi>=0.115.0",
+    "uvicorn[standard]>=0.32.0",
+    "python-dotenv>=1.0.0",
+    "pydantic[email]>=2.0.0",
+    "pydantic-settings>=2.0.0",
+    "email-validator>=2.0.0",
+]
+
+[project.scripts]
+bambu-mcp = "bambu_mcp.server:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-dir]
+"" = "src"

@@ -1,0 +1,17 @@
+[build]
+builder = "DOCKERFILE"
+dockerfilePath = "Dockerfile"
+
+[deploy]
+startCommand = "python -m bambu_mcp.server"
+healthcheckPath = "/health"
+healthcheckTimeout = 100
+restartPolicyType = "ON_FAILURE"
+restartPolicyMaxRetries = 10
+
+[env]
+# These will be set in Railway dashboard
+# BAMBU_EMAIL
+# BAMBU_PASSWORD
+# BAMBU_TOKEN (optional, will be cached after first auth)
+# BAMBU_DEVICE_ID
