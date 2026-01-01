@@ -33,23 +33,20 @@ class BambuAuthManager:
 
             logger.info(f"Authenticating with Bambu Cloud as {self.settings.bambu_email}")
 
-            # Initialize authenticator
-            self.authenticator = BambuAuthenticator(
-                email=self.settings.bambu_email,
+            # Initialize authenticator (new API - no args in constructor)
+            self.authenticator = BambuAuthenticator()
+
+            # Perform authentication (sync method, not async)
+            # This will raise an exception if 2FA code is needed
+            self._token = self.authenticator.login(
+                username=self.settings.bambu_email,
                 password=self.settings.bambu_password
             )
 
-            # Perform authentication
-            auth_response = await self.authenticator.authenticate()
-
-            if not auth_response or not auth_response.get("accessToken"):
+            if not self._token:
                 raise Exception("Authentication failed: No access token received")
 
-            self._token = auth_response["accessToken"]
             logger.info("Successfully authenticated with Bambu Cloud")
-
-            # In production, you might want to save this token to persistent storage
-            # For now, we'll just keep it in memory
 
             return self._token
 
