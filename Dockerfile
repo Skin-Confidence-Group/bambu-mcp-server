@@ -7,6 +7,7 @@ WORKDIR /app
 # Install system dependencies
 RUN apt-get update && apt-get install -y \
     gcc \
+    curl \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy requirements first for better caching
@@ -23,9 +24,9 @@ RUN pip install -e .
 # Expose port (Railway will set PORT env var)
 EXPOSE 8000
 
-# Health check
-HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
-    CMD python -c "import requests; requests.get('http://localhost:8000/health')"
+# Health check (using curl instead of requests)
+HEALTHCHECK --interval=30s --timeout=10s --start-period=10s --retries=3 \
+    CMD curl -f http://localhost:${PORT:-8000}/health || exit 1
 
-# Run the server
-CMD ["python", "-m", "uvicorn", "bambu_mcp.server:app", "--host", "0.0.0.0", "--port", "${PORT:-8000}"]
+# Run the server - Railway sets $PORT dynamically
+CMD python -m uvicorn bambu_mcp.server:app --host 0.0.0.0 --port ${PORT:-8000}
