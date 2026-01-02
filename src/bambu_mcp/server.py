@@ -89,8 +89,59 @@ async def root():
         "endpoints": {
             "health": "/health",
             "mcp_sse": "/sse",
+            "api_tool": "/api/tool",
         }
     })
+
+
+@app.post("/api/tool")
+async def handle_tool_call(request: dict[str, Any]):
+    """HTTP endpoint for tool calls (used by local bridge)."""
+    try:
+        name = request.get("name")
+        arguments = request.get("arguments", {})
+
+        logger.info(f"HTTP tool call: {name} with arguments: {arguments}")
+
+        # Route to appropriate tool handler
+        if name == "get_printer_status":
+            result = await bambu_tools.get_printer_status()
+        elif name == "list_cloud_files":
+            result = await bambu_tools.list_cloud_files()
+        elif name == "upload_file":
+            result = await bambu_tools.upload_file(
+                file_path=arguments["file_path"],
+                file_name=arguments.get("file_name")
+            )
+        elif name == "start_print":
+            result = await bambu_tools.start_print(
+                file_id=arguments["file_id"],
+                plate_number=arguments.get("plate_number", 1)
+            )
+        elif name == "pause_print":
+            result = await bambu_tools.pause_print()
+        elif name == "resume_print":
+            result = await bambu_tools.resume_print()
+        elif name == "cancel_print":
+            result = await bambu_tools.cancel_print()
+        elif name == "get_ams_status":
+            result = await bambu_tools.get_ams_status()
+        elif name == "list_presets":
+            result = await bambu_tools.list_presets()
+        else:
+            return JSONResponse(
+                {"error": f"Unknown tool: {name}"},
+                status_code=400
+            )
+
+        return JSONResponse(result)
+
+    except Exception as e:
+        logger.error(f"HTTP tool call error: {e}", exc_info=True)
+        return JSONResponse(
+            {"error": str(e)},
+            status_code=500
+        )
 
 
 # Register MCP tools
