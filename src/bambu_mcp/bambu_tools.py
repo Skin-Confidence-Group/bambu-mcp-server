@@ -21,8 +21,8 @@ class BambuPrinterTools:
         """Get or create Bambu API client."""
         if not self.client:
             token = await self.auth_manager.get_token()
-            # New API: BambuClient just takes access_token
-            self.client = BambuClient(access_token=token)
+            # New API: BambuClient takes 'token' parameter (not 'access_token')
+            self.client = BambuClient(token=token)
         return self.client
 
     async def _get_mqtt_client(self) -> MQTTClient:
