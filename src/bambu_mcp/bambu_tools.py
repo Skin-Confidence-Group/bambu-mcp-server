@@ -21,10 +21,8 @@ class BambuPrinterTools:
         """Get or create Bambu API client."""
         if not self.client:
             token = await self.auth_manager.get_token()
-            self.client = BambuClient(
-                access_token=token,
-                device_id=self.settings.bambu_device_id
-            )
+            # New API: BambuClient just takes access_token
+            self.client = BambuClient(access_token=token)
         return self.client
 
     async def _get_mqtt_client(self) -> MQTTClient:
@@ -47,24 +45,15 @@ class BambuPrinterTools:
         """
         try:
             client = await self._get_client()
-            status = await client.get_device_status()
+            # New API: get_print_status() returns print status for specific device
+            print_status = client.get_print_status(self.settings.bambu_device_id)
+            device_info = client.get_device_info(self.settings.bambu_device_id)
 
             return {
                 "device_id": self.settings.bambu_device_id,
-                "status": status.get("status", "unknown"),
-                "print_progress": status.get("print_progress", 0),
-                "temperatures": {
-                    "nozzle": status.get("nozzle_temp", 0),
-                    "bed": status.get("bed_temp", 0),
-                    "chamber": status.get("chamber_temp", 0),
-                },
-                "current_file": status.get("current_file"),
-                "layer_info": {
-                    "current": status.get("current_layer", 0),
-                    "total": status.get("total_layers", 0),
-                },
-                "time_remaining": status.get("time_remaining", 0),
-                "raw_status": status,
+                "device_info": device_info,
+                "print_status": print_status,
+                "status": print_status.get("gcode_state", "unknown") if print_status else "unknown",
             }
         except Exception as e:
             logger.error(f"Error getting printer status: {e}")
@@ -79,20 +68,13 @@ class BambuPrinterTools:
         """
         try:
             client = await self._get_client()
-            files = await client.get_cloud_files()
+            # New API: get_cloud_files() is synchronous
+            files_response = client.get_cloud_files()
 
             return {
-                "files": [
-                    {
-                        "name": f.get("name"),
-                        "id": f.get("id"),
-                        "size": f.get("size"),
-                        "uploaded_at": f.get("uploaded_at"),
-                        "thumbnail": f.get("thumbnail_url"),
-                    }
-                    for f in files.get("files", [])
-                ],
-                "total_count": len(files.get("files", [])),
+                "files": files_response if isinstance(files_response, list) else files_response.get("files", []),
+                "total_count": len(files_response) if isinstance(files_response, list) else len(files_response.get("files", [])),
+                "raw_response": files_response,
             }
         except Exception as e:
             logger.error(f"Error listing cloud files: {e}")
@@ -112,18 +94,15 @@ class BambuPrinterTools:
         try:
             client = await self._get_client()
 
-            with open(file_path, "rb") as f:
-                file_data = f.read()
-
-            result = await client.upload_file(
-                file_data=file_data,
-                file_name=file_name or file_path.split("/")[-1]
+            # New API: upload_file() is synchronous
+            result = client.upload_file(
+                file_path=file_path,
+                file_name=file_name
             )
 
             return {
                 "success": True,
-                "file_id": result.get("file_id"),
-                "file_name": result.get("file_name"),
+                "result": result,
                 "message": "File uploaded successfully",
             }
         except Exception as e:
@@ -143,14 +122,16 @@ class BambuPrinterTools:
         """
         try:
             client = await self._get_client()
-            result = await client.start_print(
+            # New API: start_cloud_print() is synchronous
+            result = client.start_cloud_print(
+                device_id=self.settings.bambu_device_id,
                 file_id=file_id,
                 plate_number=plate_number
             )
 
             return {
                 "success": True,
-                "job_id": result.get("job_id"),
+                "result": result,
                 "message": "Print started successfully",
             }
         except Exception as e:
@@ -165,12 +146,11 @@ class BambuPrinterTools:
             dict: Pause result
         """
         try:
-            client = await self._get_client()
-            await client.pause_print()
-
+            # Note: The new API may not have direct pause/resume/cancel methods
+            # These might need to be done via MQTT or tasks API
             return {
-                "success": True,
-                "message": "Print paused successfully",
+                "success": False,
+                "message": "Pause functionality requires MQTT or Tasks API - not yet implemented",
             }
         except Exception as e:
             logger.error(f"Error pausing print: {e}")
@@ -184,12 +164,10 @@ class BambuPrinterTools:
             dict: Resume result
         """
         try:
-            client = await self._get_client()
-            await client.resume_print()
-
+            # Note: The new API may not have direct pause/resume/cancel methods
             return {
-                "success": True,
-                "message": "Print resumed successfully",
+                "success": False,
+                "message": "Resume functionality requires MQTT or Tasks API - not yet implemented",
             }
         except Exception as e:
             logger.error(f"Error resuming print: {e}")
@@ -203,12 +181,10 @@ class BambuPrinterTools:
             dict: Cancel result
         """
         try:
-            client = await self._get_client()
-            await client.cancel_print()
-
+            # Note: The new API may not have direct pause/resume/cancel methods
             return {
-                "success": True,
-                "message": "Print cancelled successfully",
+                "success": False,
+                "message": "Cancel functionality requires MQTT or Tasks API - not yet implemented",
             }
         except Exception as e:
             logger.error(f"Error cancelling print: {e}")
@@ -223,23 +199,14 @@ class BambuPrinterTools:
         """
         try:
             client = await self._get_client()
-            ams_data = await client.get_ams_status()
-
-            slots = []
-            for slot in ams_data.get("slots", []):
-                slots.append({
-                    "slot_number": slot.get("slot_id"),
-                    "color": slot.get("color"),
-                    "material_type": slot.get("material_type"),
-                    "remaining": slot.get("remaining_percentage", 0),
-                    "empty": slot.get("is_empty", True),
-                })
+            # New API: get_ams_filaments() is synchronous
+            ams_data = client.get_ams_filaments(self.settings.bambu_device_id)
 
             return {
                 "ams_serial": "19C06A5A3100241",
                 "ams_model": "AMS 2 Pro",
-                "slots": slots,
-                "total_slots": len(slots),
+                "device_id": self.settings.bambu_device_id,
+                "ams_data": ams_data,
             }
         except Exception as e:
             logger.error(f"Error getting AMS status: {e}")
@@ -255,23 +222,19 @@ class BambuPrinterTools:
         try:
             client = await self._get_client()
 
-            # Note: This depends on what the bambu-lab-cloud-api library supports
-            # If presets aren't available via cloud API, we'll return a placeholder
+            # New API: Check if get_slicer_settings is available
             try:
-                presets = await client.get_presets()
-            except AttributeError:
-                logger.warning("Preset listing not supported by current API version")
+                slicer_settings = client.get_slicer_settings()
+                return {
+                    "supported": True,
+                    "slicer_settings": slicer_settings,
+                }
+            except (AttributeError, Exception) as e:
+                logger.warning(f"Preset listing not supported: {e}")
                 return {
                     "supported": False,
                     "message": "Preset listing not available via Cloud API. Use Bambu Studio locally.",
                 }
-
-            return {
-                "supported": True,
-                "print_presets": presets.get("print", []),
-                "filament_presets": presets.get("filament", []),
-                "machine_presets": presets.get("machine", []),
-            }
         except Exception as e:
             logger.error(f"Error listing presets: {e}")
             raise
