@@ -1,6 +1,7 @@
 """Configuration management for Bambu MCP Server."""
 import os
 from typing import Optional
+from pydantic import field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -18,6 +19,12 @@ class Settings(BaseSettings):
     bambu_password: str
     bambu_token: Optional[str] = None
     bambu_device_id: str = "0948BB5B1200532"
+
+    @field_validator('bambu_token')
+    @classmethod
+    def strip_token(cls, v: Optional[str]) -> Optional[str]:
+        """Strip whitespace from token (Railway env vars sometimes have trailing newlines)."""
+        return v.strip() if v else v
 
     # Server configuration
     port: int = 8000
