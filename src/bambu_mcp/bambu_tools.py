@@ -45,15 +45,34 @@ class BambuPrinterTools:
         """
         try:
             client = await self._get_client()
-            # New API: get_print_status() returns print status for specific device
-            print_status = client.get_print_status(self.settings.bambu_device_id)
-            device_info = client.get_device_info(self.settings.bambu_device_id)
+
+            # New API: get_devices() returns list of devices with status
+            devices = client.get_devices()
+
+            # Find our specific device
+            device = None
+            for d in devices:
+                if d.get('dev_id') == self.settings.bambu_device_id:
+                    device = d
+                    break
+
+            if not device:
+                return {
+                    "error": f"Device {self.settings.bambu_device_id} not found",
+                    "available_devices": devices
+                }
 
             return {
                 "device_id": self.settings.bambu_device_id,
-                "device_info": device_info,
-                "print_status": print_status,
-                "status": print_status.get("gcode_state", "unknown") if print_status else "unknown",
+                "name": device.get("name"),
+                "model": device.get("dev_product_name"),
+                "model_name": device.get("dev_model_name"),
+                "online": device.get("online"),
+                "print_status": device.get("print_status"),
+                "nozzle_diameter": device.get("nozzle_diameter"),
+                "access_code": device.get("dev_access_code"),
+                "structure": device.get("dev_structure"),
+                "raw_device_data": device,
             }
         except Exception as e:
             logger.error(f"Error getting printer status: {e}")
